@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -12,21 +13,36 @@ public class ViewController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI counterText, secondCounterText;
     [SerializeField] private RectTransform Star;
     private int currentCount;
+    private bool isUpdatingPoints;
+    private int pointsToUpdate;
+
+    private event Action<int> pointsUpdated;
 
     void Awake()
     {
         currentCards = _creator?.CreateCards(this);
+        isUpdatingPoints = false;
+        pointsToUpdate = 0;
+        pointsUpdated += UpdateCount;
     }
 
     public void UpdateCount(int points)
     {
-        StartCoroutine(UpdateCountRoutine(points));
+        if (points == 0) return;
+        currentCount += points;
+        pointsToUpdate += points;
+        if (!isUpdatingPoints)
+        {
+            StartCoroutine(UpdateCountRoutine(pointsToUpdate));
+            pointsToUpdate = 0;
+        }
     }
 
     IEnumerator UpdateCountRoutine(int points)
     {
-        var start = currentCount;
-        var end = currentCount + points;
+        isUpdatingPoints = true;
+        var start = currentCount - points;
+        var end = currentCount;
         var startRotation = Star.rotation.eulerAngles;
         var endRotation = startRotation + new Vector3(0, 0, 360);
         float lerpPos = 0f, lerpTime = 0f;
@@ -39,7 +55,7 @@ public class ViewController : MonoBehaviour
             lerpTime += Time.deltaTime / 2;
             yield return new WaitForEndOfFrame();
         }
-
-        currentCount += points;
+        isUpdatingPoints = false;
+        pointsUpdated?.Invoke(pointsToUpdate);
     }
 }
